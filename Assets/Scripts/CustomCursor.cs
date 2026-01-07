@@ -2,11 +2,11 @@ using UnityEngine;
 
 public class CustomCursor : MonoBehaviour
 {
-    public Texture2D crosshairTexture; // Assign your crosshair texture here
-    public Vector2 hotspot = Vector2.zero; // Adjust the hotspot if needed
+    public Texture2D cursor;
+    public Vector2 hotspot = Vector2.zero;
 
     void Start()
     {
-        Cursor.SetCursor(crosshairTexture, hotspot, CursorMode.Auto);
+        Cursor.SetCursor(cursor, hotspot, CursorMode.Auto);
     }
 }

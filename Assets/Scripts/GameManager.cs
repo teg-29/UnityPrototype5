@@ -8,86 +8,122 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour
 {
     private int lives = 3;
-    public TextMeshProUGUI livesText;
-    public GameObject heart;
     private int score;
-    private float spawmRate = 1.0f;
+    private float spawnRate = 1.0f;
+
+    public GameObject[] hearts;
     public List<GameObject> targets;
     public TextMeshProUGUI scoreText;
-    public TextMeshProUGUI gameOverText;
     public bool isGameActive;
-    public Button restartButton;
-    public GameObject titleScreen;
+    public GameObject startScreen;
+    public GameObject endScreen;
     public Image redOverlay;
     public Image goldOverlay;
 
     public AudioSource audioSource;
-    public AudioSource backgroundMusic;
     public AudioClip reloadSound;
     public AudioClip gunshotSound;
     public AudioClip chimeSound;
     public AudioClip bombSound;
+    public AudioClip gameOverSound;
 
+    private Coroutine spawnCoroutine;
 
-
-
-    // Start is called before the first frame update
     void Start()
     {
-        livesText.text = "" + lives; // Initialize lives UI
-
-    }
-
-    public void StartGame(int difficulty)
-    {
-        isGameActive = true;
-        StartCoroutine(SpawnTarget());
-        score = 0;
-        lives = 3;
-        UpdateScore(0);
-        titleScreen.gameObject.SetActive(false);
+        startScreen.SetActive(true);
+        endScreen.SetActive(false);
+        scoreText.gameObject.SetActive(false);
         redOverlay.gameObject.SetActive(false);
-        livesText.gameObject.SetActive(true);
-        livesText.text = "" + lives;
-        spawmRate /= difficulty;
+        goldOverlay.gameObject.SetActive(false);
 
-        audioSource.PlayOneShot(reloadSound);
-
-        if (!backgroundMusic.isPlaying)
+        foreach (GameObject heart in hearts)
         {
-            backgroundMusic.Play();
+            heart.SetActive(true);
         }
     }
 
-    public void RestartGame()
+    public void StartEasyGame()
     {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        StartGame(1);
     }
-    public void GameOver()
+
+    public void StartMediumGame()
     {
-        gameOverText.gameObject.SetActive(true);
-        isGameActive = false;
-        restartButton.gameObject.SetActive(true);
-        livesText.gameObject.SetActive(false);
+        StartGame(2);
+    }
+
+    public void StartHardGame()
+    {
+        StartGame(3);
+    }
+
+    private void StartGame(int difficulty)
+    {
+        isGameActive = true;
+        score = 0;
+        lives = 3;
+        spawnRate = 1.0f / difficulty;
+
+        UpdateScore(0);
+
+        startScreen.SetActive(false);
+        endScreen.SetActive(false);
+        scoreText.gameObject.SetActive(true);
+
+        foreach (GameObject heart in hearts)
+        {
+            heart.SetActive(true);
+        }
+
+        audioSource.PlayOneShot(reloadSound);
+        spawnCoroutine = StartCoroutine(SpawnTarget());
     }
 
     public void DecreaseLife()
     {
         lives--;
-        livesText.text = "" + lives;
+
+        if (lives >= 0 && lives < hearts.Length)
+        {
+            hearts[lives].SetActive(false);
+        }
 
         if (lives <= 0)
         {
-            GameOver();
+            StartCoroutine(GameOver());
         }
     }
 
+    private IEnumerator GameOver()
+    {
+        isGameActive = false;
+        StopCoroutine(spawnCoroutine);
+
+        Target[] allTargets = FindObjectsOfType<Target>();
+        foreach (Target target in allTargets)
+        {
+            Destroy(target.gameObject);
+        }
+
+        yield return new WaitForSeconds(1f);
+
+        endScreen.SetActive(true);
+        audioSource.PlayOneShot(gameOverSound);
+    }
+
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
 
     IEnumerator SpawnTarget()
     {
         while (isGameActive)
         {
-            yield return new WaitForSeconds(spawmRate);
+            yield return new WaitForSeconds(spawnRate);
+
             int index = Random.Range(0, targets.Count);
             Instantiate(targets[index]);
         }
@@ -99,8 +135,6 @@ public class GameManager : MonoBehaviour
         scoreText.text = "Score: " + score;
     }
 
-
-
     public void TriggerRedOverlay()
     {
         StartCoroutine(FadeOverlay(redOverlay));
@@ -111,25 +145,22 @@ public class GameManager : MonoBehaviour
         StartCoroutine(FadeOverlay(goldOverlay));
     }
 
-    private IEnumerator FadeOverlay(Image OverlayColor)
+    private IEnumerator FadeOverlay(Image overlayColor)
     {
-        OverlayColor.gameObject.SetActive(true); // Show the overlay
-        Color color = OverlayColor.color;
-        color.a = 0.5f; // Set alpha to 50% visibility
-        OverlayColor.color = color;
+        overlayColor.gameObject.SetActive(true);
+        Color color = overlayColor.color;
+        color.a = 0.5f;
+        overlayColor.color = color;
 
-        // Wait briefly to keep the overlay visible
         yield return new WaitForSeconds(0.2f);
 
-        // Gradually fade out the overlay
-        while (OverlayColor.color.a > 0)
+        while (overlayColor.color.a > 0)
         {
-            color.a -= Time.deltaTime;
-            OverlayColor.color = color;
+            color.a -= Time.deltaTime * 2f;
+            overlayColor.color = color;
             yield return null;
         }
 
-        OverlayColor.gameObject.SetActive(false); // Hide the overlay after fading out
+        overlayColor.gameObject.SetActive(false);
     }
 }
-
